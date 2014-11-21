@@ -24,6 +24,7 @@ class Bee:
     timeToLive = 0
     turnTime = 0
     colour = (0,0,0)
+    memoryArray = []
     def __init__(self,xPos,yPos,vel):
         self.xPos = xPos
         self.yPos = yPos
@@ -41,6 +42,13 @@ class Bee:
         self.yPosLast = self.yPos
         self.xPos = self.xPos + (self.vel * math.cos(math.radians(self.direction)))
         self.yPos = self.yPos + (self.vel * math.sin(math.radians(self.direction)))
+class Memory:
+    direction = 0.0
+    distance = 0.0
+    flowerViability = 0
+    def __init__(self,xPos,yPos,distance):
+        self.direction = math.degrees(math.asin((yPos - 384)/((yPos * yPos + xPos * xPos)**0.5)))
+        self.distance = distance
 class Flower:
     xPos = 0.0
     yPos = 0.0

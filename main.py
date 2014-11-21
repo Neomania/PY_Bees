@@ -30,6 +30,11 @@ def main():
     explosionSprite = pygame.image.load('explosion-spritesheet.png')
     fpsClock = pygame.time.Clock()
 
+    #MUSIC
+    pygame.mixer.init()
+    pygame.mixer.music.load('resources\Sunny Day Sky.ogg')
+    pygame.mixer.music.play(loops=-1)
+
     #GAME OBJECTS
     beeArray = []
     trailArray = []
@@ -90,25 +95,6 @@ def main():
                     explosionArray.append(entities.Effect(currentBee))
                     soundArray[random.randint(0,2)].play()
                 beeArray.remove(currentBee) #RIP bee
-##            #Collision handling for each bee
-##            if surfaceArray[round(currentBee.xPos),round(currentBee.yPos)] == screenSurface.map_rgb(DEVPINK):
-##                print('collision detected')
-##                if surfaceArray[round(currentBee.xPos),round(currentBee.yPosLast)] == screenSurface.map_rgb(DEVPINK):
-##                    if currentBee.xPosLast > currentBee.xPos:
-##                        while surfaceArray[round(currentBee.xPos),round(currentBee.yPosLast)] == screenSurface.map_rgb(DEVPINK): #removed +/- 1 on coordinates to fix jitter bug
-##                            currentBee.xPos = currentBee.xPos + 1
-##                    else:
-##                        while surfaceArray[round(currentBee.xPos),round(currentBee.yPosLast)] == screenSurface.map_rgb(DEVPINK):
-##                            currentBee.xPos = currentBee.xPos - 1
-##                    currentBee.xVel = 0
-##                if surfaceArray[round(currentBee.xPosLast),round(currentBee.yPos)] == screenSurface.map_rgb(DEVPINK):
-##                    if currentBee.yPosLast > currentBee.yPos:
-##                        while surfaceArray[round(currentBee.xPosLast),round(currentBee.yPos)] == screenSurface.map_rgb(DEVPINK):
-##                            currentBee.yPos = currentBee.yPos + 1
-##                    else:
-##                        while surfaceArray[round(currentBee.xPosLast),round(currentBee.yPos)] == screenSurface.map_rgb(DEVPINK):
-##                            currentBee.yPos = currentBee.yPos - 1
-##                    currentBee.yVel = 0
         #UPDATES FLOWER STATES
         for flower in flowerArray:
             flower.makePollen()
