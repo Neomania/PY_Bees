@@ -26,7 +26,7 @@ def main():
     xOffset = 0
     yOffset = 0
     drawTrails = True
-    beeExplosions = True
+    beeExplosions = False
     explosionSprite = pygame.image.load('explosion-spritesheet.png')
     fpsClock = pygame.time.Clock()
 
@@ -51,33 +51,38 @@ def main():
     miscArray = [] #used for general structure things
 
     pygame.init()
+    iconSurface = pygame.image.load('resources\icon.png')
+    pygame.display.set_icon(iconSurface)
     screenSurface = pygame.display.set_mode((1366,768))
     pygame.display.set_caption('hello bees')
     #initial flower generation
-    for i in range (3,10):
-        flowerColour = (random.randint(128,255),random.randint(128,255),random.randint(128,255))
-        patchLocation[0] = random.randint(0,1366)
-        patchLocation[1] = random.randint(0,768)
-        for flowerNo in range (1,random.randint(1,6)):
-            flowerArray.append(entities.Flower(patchLocation[0] + random.randint(-50,50),patchLocation[1] + random.randint(-50,50),flowerColour))
+##    for i in range (3,10):
+##        flowerColour = (random.randint(128,255),random.randint(128,255),random.randint(128,255))
+##        patchLocation[0] = random.randint(0,1366)
+##        patchLocation[1] = random.randint(0,768)
+##        for flowerNo in range (1,random.randint(1,6)):
+##            flowerArray.append(entities.Flower(patchLocation[0] + random.randint(-50,50),patchLocation[1] + random.randint(-50,50),flowerColour))
 
     while True:
         screenSurface.fill((0,0,0))
         #surfaceArray = pygame.PixelArray(screenSurface)
         #EVENT HANDLING
-        if random.random() < 0.05:
+        if random.random() < 0.01:
             beeArray.append(entities.Bee(683,384,2))
         for event in pygame.event.get():
             if event.type == QUIT:
                 pygame.quit()
                 sys.exit()
-        if random.random() > 0.999:
-            #create flowerpatch
+        if random.random() > 0.99:
+            #create flowerpatch with same characteristics for each flower
             flowerColour = (random.randint(128,255),random.randint(128,255),random.randint(128,255))
+            pollenRate = random.randint(0,6) + random.randint(0,6) + 1 #creates normal-ish distribution for recharge rates
+            pollenMax = random.randint(0,30) + random.randint(0,30) + 10
+            flowerTimeToLive = random.randint(0,60000) + random.randint(0,60000) + 20000
             patchLocation[0] = random.randint(0,1366)
             patchLocation[1] = random.randint(0,768)
             for flowerNo in range (1,random.randint(1,6)):
-                flowerArray.append(entities.Flower(patchLocation[0] + random.randint(-50,50),patchLocation[1] + random.randint(-50,50),flowerColour))
+                flowerArray.append(entities.Flower(patchLocation[0] + random.randint(-50,50),patchLocation[1] + random.randint(-50,50),flowerColour,pollenRate,pollenMax,flowerTimeToLive))
         #UPDATES POSITION AND HANDLES COLLISIONS
 ##        for trail in trailArray:
 ##            trail.update()
@@ -101,6 +106,16 @@ def main():
             if flower.timeToLive == 0:
                 flowerArray.remove(flower)
 
+        #COLLECTS POLLEN FROM NEARBY FLOWERS
+        for bee in beeArray:
+            shortestDistance = 99999
+            for flower in flowerArray:
+                if distanceBetween(bee,flower) < shortestDistance:
+                    shortestDistance = distanceBetween(bee,flower)
+                if shortestDistance < 10:
+                    bee.harvestPollen(flower)
+                    shortestDistance = 99999
+
         #Final two lines, updates screen and ticks for frame (according to timescale)
 
         #DRAWS EACH FLOWER
@@ -114,6 +129,8 @@ def main():
         for bee in beeArray:
             if bee.boolSelected == True:
                 pygame.draw.circle(screenSurface,DEVPINK,(round(bee.xPos) + xOffset,round(bee.yPos) + yOffset),2,0)
+            elif bee.heldPollen > 30:
+                pygame.draw.circle(screenSurface,RED,(round(bee.xPos) + xOffset,round(bee.yPos) + yOffset),2,0)
             else:
                 pygame.draw.circle(screenSurface,bee.colour,(round(bee.xPos) + xOffset, round(bee.yPos) + yOffset),2,0)
             #pygame.draw.line(screenSurface,RED,pygame.mouse.get_pos(),(round(bee.xPos),round(bee.yPos)),1)
@@ -127,7 +144,8 @@ def main():
         pygame.display.update()
         print(len(beeArray))
         fpsClock.tick(FPS * intTimeScale)
-
+def distanceBetween(entity1,entity2):
+    return (((entity1.xPos - entity2.xPos)**2) + ((entity1.yPos - entity2.yPos)**2))**0.5
 if __name__ == '__main__':
     from pygame.locals import *
     main()
