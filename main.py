@@ -11,6 +11,7 @@
 
 def main():
     import pygame, sys, os, random
+    import pygame.freetype
     import entities
     FPS = 60
     DEVPINK = (255,0,255)
@@ -29,6 +30,12 @@ def main():
     beeExplosions = False
     explosionSprite = pygame.image.load('explosion-spritesheet.png')
     fpsClock = pygame.time.Clock()
+    windowWidth = 1366
+    windowHeight = 768
+
+    #GUI
+    pygame.freetype.init()
+    debugFont = pygame.freetype.SysFont('Arial',24)
 
     #MUSIC
     pygame.mixer.init()
@@ -41,6 +48,8 @@ def main():
     flowerArray = []
     explosionArray = []
     explosionSpriteArray = []
+    hive = entities.Beehive(windowWidth / 2, windowHeight / 2)
+    hiveRect = pygame.Rect((windowWidth / 2) - 50, (windowHeight / 2) - 50,100,100)
     for i in range (0,25):
         explosionSpriteArray.append(pygame.Rect(i*192,0,192,195))
     soundArray = []
@@ -73,16 +82,18 @@ def main():
             if event.type == QUIT:
                 pygame.quit()
                 sys.exit()
+
         if random.random() > 0.99:
+            if len(flowerArray) < 25:
             #create flowerpatch with same characteristics for each flower
-            flowerColour = (random.randint(128,255),random.randint(128,255),random.randint(128,255))
-            pollenRate = random.randint(0,6) + random.randint(0,6) + 1 #creates normal-ish distribution for recharge rates
-            pollenMax = random.randint(0,30) + random.randint(0,30) + 10
-            flowerTimeToLive = random.randint(0,60000) + random.randint(0,60000) + 20000
-            patchLocation[0] = random.randint(0,1366)
-            patchLocation[1] = random.randint(0,768)
-            for flowerNo in range (1,random.randint(1,6)):
-                flowerArray.append(entities.Flower(patchLocation[0] + random.randint(-50,50),patchLocation[1] + random.randint(-50,50),flowerColour,pollenRate,pollenMax,flowerTimeToLive))
+                flowerColour = (random.randint(128,255),random.randint(128,255),random.randint(128,255))
+                pollenRate = random.randint(0,6) + random.randint(0,6) + 1 #creates normal-ish distribution for recharge rates
+                pollenMax = random.randint(0,30) + random.randint(0,30) + 600
+                flowerTimeToLive = random.randint(0,60000) + random.randint(0,60000) + 20000
+                patchLocation[0] = random.randint(0,1366)
+                patchLocation[1] = random.randint(0,768)
+                for flowerNo in range (1,random.randint(1,6)):
+                    flowerArray.append(entities.Flower(patchLocation[0] + random.randint(-50,50),patchLocation[1] + random.randint(-50,50),flowerColour,pollenRate,pollenMax,flowerTimeToLive))
         #UPDATES POSITION AND HANDLES COLLISIONS
 ##        for trail in trailArray:
 ##            trail.update()
@@ -116,11 +127,23 @@ def main():
                     bee.harvestPollen(flower)
                     shortestDistance = 99999
 
+        for bee in beeArray:
+            if hiveRect.collidepoint(bee.xPos,bee.yPos):
+                hive.collectPollenFromBee(bee)
+
         #Final two lines, updates screen and ticks for frame (according to timescale)
 
+        #DRAWS HIVE
+        pygame.draw.rect(screenSurface, (125,125,0),hiveRect,0)
+
         #DRAWS EACH FLOWER
+
         for flowa in flowerArray:
-            pygame.draw.circle(screenSurface,flowa.colour,(flowa.xPos, flowa.yPos),5,0)
+            if flowa.pollenStored < 300:
+                pygame.draw.circle(screenSurface,RED,(flowa.xPos, flowa.yPos),5,0)
+            else:
+                pygame.draw.circle(screenSurface,flowa.colour,(flowa.xPos, flowa.yPos),5,0)
+
 ##        #DRAWS EACH TRAIL
 ##        if drawTrails == True:
 ##            for trail in trailArray:
@@ -129,7 +152,7 @@ def main():
         for bee in beeArray:
             if bee.boolSelected == True:
                 pygame.draw.circle(screenSurface,DEVPINK,(round(bee.xPos) + xOffset,round(bee.yPos) + yOffset),2,0)
-            elif bee.heldPollen > 30:
+            elif bee.heldPollen > 999:
                 pygame.draw.circle(screenSurface,RED,(round(bee.xPos) + xOffset,round(bee.yPos) + yOffset),2,0)
             else:
                 pygame.draw.circle(screenSurface,bee.colour,(round(bee.xPos) + xOffset, round(bee.yPos) + yOffset),2,0)
@@ -140,6 +163,9 @@ def main():
                 explosion.timeToLive = explosion.timeToLive - 1
                 if explosion.timeToLive == 0:
                     explosionArray.remove(explosion)
+        #DEBUG TEXT
+
+        debugFont.render_to(screenSurface,(0,0),"Pollen in hive: " + str(hive.pollenStore),WHITE,None,0,0)
         #Final two lines, updates screen and ticks for frame (according to timescale)
         pygame.display.update()
         print(len(beeArray))

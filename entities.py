@@ -57,7 +57,11 @@ class Beehive:
     yPos = 0.0
     pollenStore = 0
     def __init__(self,xPos,yPos):
-        pass
+        self.xPos = xPos
+        self.yPos = yPos
+    def collectPollenFromBee(self,bee):
+        self.pollenStore = self.pollenStore + bee.heldPollen
+        bee.heldPollen = 0
 class Memory:
     direction = 0.0
     distance = 0.0
@@ -89,12 +93,12 @@ class Flower:
             self.pollenStored = self.pollenStored + self.pollenRate
         self.timeToLive = self.timeToLive - 1
     def givePollen(self, bee):
-        if self.pollenStored < (100 - bee.heldPollen):
+        if self.pollenStored < (1000 - bee.heldPollen):
             bee.heldPollen = bee.heldPollen + self.pollenStored
             self.pollenStored = 0
         else:
             self.pollenStored = self.pollenStored - (100 - bee.heldPollen)
-            bee.heldPollen = 100
+            bee.heldPollen = 1000
 class Effect:
     xPos = 0.0
     yPos = 0.0
