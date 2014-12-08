@@ -52,6 +52,9 @@ class Bee:
     def harvestPollen(self,flower):
         self.currentFlower = flower
         flower.givePollen(self)
+    def moveTowards(self,target,accuracy):
+        self.turnTime = random.randint(5,20)
+        self.direction = math.degrees(math.atan2((target[1] - self.yPos) , (target[0] - self.xPos))) + random.randint(-accuracy,accuracy)
 class Beehive:
     xPos = 0.0
     yPos = 0.0
@@ -99,6 +102,7 @@ class Flower:
         else:
             self.pollenStored = self.pollenStored - (100 - bee.heldPollen)
             bee.heldPollen = 1000
+            bee.currentAction = "Return to hive"
 class Effect:
     xPos = 0.0
     yPos = 0.0
@@ -121,6 +125,9 @@ class Trail:
     def update(self):
         self.timeToLive = self.timeToLive - 1
         self.colour = (self.colour[0],self.colour[1],self.colour[2])
+
+def distanceBetween(pos1,pos2):
+    return (((pos1[0] - pos2[0])**2) + ((pos1[1] - pos2[1])**2))**0.5
 
 
 

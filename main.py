@@ -21,29 +21,39 @@ def main():
     YELLOW = (255,255,0)
     BLACK = (0,0,0)
     WHITE = (255,255,255)
+    SOL_GREEN = (133,153,0)
+    SOL_DARK = (7,54,66)
     flowerColour = (0,0,0)
     patchLocation = [0,0] #x, y
     intTimeScale = 1.0
     xOffset = 0
     yOffset = 0
+    scrollAmount = 0
     drawTrails = True
     beeExplosions = False
     explosionSprite = pygame.image.load('explosion-spritesheet.png')
     fpsClock = pygame.time.Clock()
-    windowWidth = 1366
-    windowHeight = 768
+    windowWidth = 1080
+    windowHeight = 1080
+    beeMax = 50
+
+    selectionStart = (0,0)
+    selectionSize = (0,0)
+    selectionEnd = (0,0)
+    selecting = False
 
     #GUI
     pygame.freetype.init()
     debugFont = pygame.freetype.SysFont('Arial',24)
 
     #MUSIC
-    pygame.mixer.init()
-    pygame.mixer.music.load('resources\Sunny Day Sky.ogg')
-    pygame.mixer.music.play(loops=-1)
+##    pygame.mixer.init()
+##    pygame.mixer.music.load('resources\Sunny Day Sky.ogg')
+##    pygame.mixer.music.play(loops=-1)
 
     #GAME OBJECTS
     beeArray = []
+    selectedBeeArray = []
     trailArray = []
     flowerArray = []
     explosionArray = []
@@ -62,7 +72,8 @@ def main():
     pygame.init()
     iconSurface = pygame.image.load('resources\icon.png')
     pygame.display.set_icon(iconSurface)
-    screenSurface = pygame.display.set_mode((1366,768))
+    screenSurface = pygame.Surface((windowWidth,windowHeight))
+    mainSurface = pygame.display.set_mode((1920,1080))
     pygame.display.set_caption('hello bees')
     #initial flower generation
 ##    for i in range (3,10):
@@ -73,16 +84,48 @@ def main():
 ##            flowerArray.append(entities.Flower(patchLocation[0] + random.randint(-50,50),patchLocation[1] + random.randint(-50,50),flowerColour))
 
     while True:
-        screenSurface.fill((0,0,0))
+        screenSurface.fill(BLACK)
+        mainSurface.fill(SOL_DARK)
         #surfaceArray = pygame.PixelArray(screenSurface)
         #EVENT HANDLING
-        if random.random() < 0.01:
-            beeArray.append(entities.Bee(683,384,2))
+        if random.random() < 0.03:
+            if len(beeArray) < beeMax:
+                beeArray.append(entities.Bee(hive.xPos,hive.yPos,2))
         for event in pygame.event.get():
             if event.type == QUIT:
                 pygame.quit()
                 sys.exit()
+            elif event.type == MOUSEBUTTONDOWN:
+                scrollAmount = 0
+                for bee in selectedBeeArray:
+                    bee.boolSelected = False
+                selectedBeeArray = []
+                selecting = True
+                selectionStart = pygame.mouse.get_pos()
+            elif event.type == MOUSEBUTTONUP:
+                selectionSize = (pygame.mouse.get_pos()[0] - selectionStart[0],pygame.mouse.get_pos()[1] - selectionStart[1])
+                selectionEnd = pygame.mouse.get_pos()
+                selectionRect = pygame.Rect(selectionStart,selectionSize)
+                selecting = False
+                for bee in beeArray:
+                    if betweenVertices(selectionStart,selectionEnd,bee):
+                        bee.boolSelected = True
+                        selectedBeeArray.append(bee)
+            elif event.type == KEYDOWN:
+                if event.key == K_DOWN:
+                    pass
+                    #scrollAmount = scrollAmount - 10
+                elif event.key == K_UP:
+                    pass
+                    #scrollAmount = scrollAmount + 10
+        if pygame.key.get_pressed()[K_UP]:
+            scrollAmount = scrollAmount + 5
+        if pygame.key.get_pressed()[K_DOWN]:
+            scrollAmount = scrollAmount - 5
 
+    ##                if selectionRect.collidepoint(bee.xPos,bee.yPos):
+    ##                    bee.boolSelected = True
+    ##                    selectedBeeArray.append(bee)
         if random.random() > 0.99:
             if len(flowerArray) < 25:
             #create flowerpatch with same characteristics for each flower
@@ -90,8 +133,8 @@ def main():
                 pollenRate = random.randint(0,6) + random.randint(0,6) + 1 #creates normal-ish distribution for recharge rates
                 pollenMax = random.randint(0,30) + random.randint(0,30) + 600
                 flowerTimeToLive = random.randint(0,60000) + random.randint(0,60000) + 20000
-                patchLocation[0] = random.randint(0,1366)
-                patchLocation[1] = random.randint(0,768)
+                patchLocation[0] = random.randint(0,windowWidth)
+                patchLocation[1] = random.randint(0,windowHeight)
                 for flowerNo in range (1,random.randint(1,6)):
                     flowerArray.append(entities.Flower(patchLocation[0] + random.randint(-50,50),patchLocation[1] + random.randint(-50,50),flowerColour,pollenRate,pollenMax,flowerTimeToLive))
         #UPDATES POSITION AND HANDLES COLLISIONS
@@ -104,7 +147,14 @@ def main():
             currentBee.updatePosition()
             currentBee.turnTime = currentBee.turnTime - 1
             if currentBee.turnTime <= 0:
-                currentBee.randomDirection()
+                if currentBee.currentAction == "Moving randomly":
+                    currentBee.randomDirection()
+                elif currentBee.currentAction == "Return to hive":
+                    currentBee.moveTowards((hive.xPos,hive.yPos),20)
+                elif currentBee.currentAction == "Idling":
+                    currentBee.randomDirection()
+                    currentBee.vel = 2
+                    currentBee.currentAction = "Moving randomly"
                 #currentBee.direction = currentBee.direction + 1
             if currentBee.timeToLive <= 0:
                 if beeExplosions == True:
@@ -119,17 +169,22 @@ def main():
 
         #COLLECTS POLLEN FROM NEARBY FLOWERS
         for bee in beeArray:
-            shortestDistance = 99999
-            for flower in flowerArray:
-                if distanceBetween(bee,flower) < shortestDistance:
-                    shortestDistance = distanceBetween(bee,flower)
-                if shortestDistance < 10:
-                    bee.harvestPollen(flower)
-                    shortestDistance = 99999
+            if bee.currentAction != "Return to hive":
+                shortestDistance = 99999
+                for flower in flowerArray:
+                    if distanceBetween(bee,flower) < shortestDistance:
+                        shortestDistance = distanceBetween(bee,flower)
+                    if shortestDistance < 25:
+                        bee.harvestPollen(flower)
+                        shortestDistance = 99999
 
         for bee in beeArray:
-            if hiveRect.collidepoint(bee.xPos,bee.yPos):
+            if hiveRect.collidepoint(bee.xPos,bee.yPos) and bee.currentAction == "Return to hive":
                 hive.collectPollenFromBee(bee)
+                bee.currentAction = "Idling"
+                bee.moveTowards((hive.xPos,hive.yPos),30)
+                bee.vel = 0.25
+                bee.turnTime = random.randint(60,600)
 
         #Final two lines, updates screen and ticks for frame (according to timescale)
 
@@ -149,6 +204,13 @@ def main():
 ##            for trail in trailArray:
 ##                pygame.draw.circle(screenSurface,trail.colour,(round(trail.xPos) + xOffset, round(trail.yPos) + yOffset),2,0)
         #DRAWS EACH BEE
+        for i in range(0,len(selectedBeeArray)):
+            if (30 * (i + 1) + scrollAmount) > 0:
+                debugFont.render_to(mainSurface,(windowWidth + 5,30 * (i + 1) + scrollAmount),"currentAction: " + selectedBeeArray[i].currentAction + ", dir: " + str(selectedBeeArray[i].direction) + ", xPos: " + str(selectedBeeArray[i].xPos) + ", yPos: " + str(selectedBeeArray[i].yPos),SOL_GREEN,None,0,0)
+        if selecting == True:
+            selectionSize = (pygame.mouse.get_pos()[0] - selectionStart[0],pygame.mouse.get_pos()[1] - selectionStart[1])
+            selectionRect = pygame.Rect(selectionStart,selectionSize)
+            pygame.draw.rect(screenSurface,RED,selectionRect,2)
         for bee in beeArray:
             if bee.boolSelected == True:
                 pygame.draw.circle(screenSurface,DEVPINK,(round(bee.xPos) + xOffset,round(bee.yPos) + yOffset),2,0)
@@ -165,11 +227,31 @@ def main():
                     explosionArray.remove(explosion)
         #DEBUG TEXT
 
-        debugFont.render_to(screenSurface,(0,0),"Pollen in hive: " + str(hive.pollenStore),WHITE,None,0,0)
+        debugFont.render_to(mainSurface,(windowWidth + 5,0),"Pollen in hive: " + str(hive.pollenStore),SOL_GREEN,None,0,0)
         #Final two lines, updates screen and ticks for frame (according to timescale)
+        mainSurface.blit(screenSurface,(0,0))
         pygame.display.update()
         print(len(beeArray))
         fpsClock.tick(FPS * intTimeScale)
+def betweenVertices(selectionStart,selectionEnd,entity):
+    inX = False
+    inY = False
+    if entity.xPos > selectionStart[0]:
+        if entity.xPos < selectionEnd[0]:
+            inX = True
+    elif entity.xPos > selectionEnd[0]:
+        inX = True
+    if entity.yPos > selectionStart[1]:
+        if entity.yPos < selectionEnd[1]:
+            inY = True
+    elif entity.yPos > selectionEnd[1]:
+        inY = True
+    if inX and inY:
+        return True
+    else:
+        return False
+
+
 def distanceBetween(entity1,entity2):
     return (((entity1.xPos - entity2.xPos)**2) + ((entity1.yPos - entity2.yPos)**2))**0.5
 if __name__ == '__main__':
