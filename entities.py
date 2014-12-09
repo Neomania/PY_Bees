@@ -23,7 +23,9 @@ class Bee:
     direction = 0.0
     timeToLive = 0
     turnTime = 0
+    actionTime = 0
     colour = (0,0,0)
+    memoryInQuestion = None
     memoryArray = []
     distanceTravelled = 0.0
     currentAction = "Moving randomly"
@@ -68,9 +70,13 @@ class Beehive:
 class Memory:
     direction = 0.0
     distance = 0.0
+    xPos = 0.0
+    yPos = 0.0
     flowerViability = 0
     def __init__(self,xPos,yPos,distance,viability):
         self.direction = math.degrees(math.asin((yPos - 384)/((yPos * yPos + xPos * xPos)**0.5)))
+        self.xPos = xPos
+        self.yPos = yPos
         self.distance = distance
         self.flowerViability = viability
 class Flower:
@@ -100,7 +106,7 @@ class Flower:
             bee.heldPollen = bee.heldPollen + self.pollenStored
             self.pollenStored = 0
         else:
-            self.pollenStored = self.pollenStored - (100 - bee.heldPollen)
+            self.pollenStored = self.pollenStored - (1000 - bee.heldPollen)
             bee.heldPollen = 1000
             bee.currentAction = "Return to hive"
 class Effect:

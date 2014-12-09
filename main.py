@@ -47,9 +47,9 @@ def main():
     debugFont = pygame.freetype.SysFont('Arial',24)
 
     #MUSIC
-##    pygame.mixer.init()
-##    pygame.mixer.music.load('resources\Sunny Day Sky.ogg')
-##    pygame.mixer.music.play(loops=-1)
+    pygame.mixer.init()
+    pygame.mixer.music.load('resources\Sunny Day Sky.ogg')
+    #pygame.mixer.music.play(loops=-1)
 
     #GAME OBJECTS
     beeArray = []
@@ -88,7 +88,7 @@ def main():
         mainSurface.fill(SOL_DARK)
         #surfaceArray = pygame.PixelArray(screenSurface)
         #EVENT HANDLING
-        if random.random() < 0.03:
+        if random.random() < 0.2:
             if len(beeArray) < beeMax:
                 beeArray.append(entities.Bee(hive.xPos,hive.yPos,2))
         for event in pygame.event.get():
@@ -111,12 +111,19 @@ def main():
                     if betweenVertices(selectionStart,selectionEnd,bee):
                         bee.boolSelected = True
                         selectedBeeArray.append(bee)
+                for flower in flowerArray:
+                    if betweenVertices(selectionStart,selectionEnd,flower):
+                        selectedBeeArray.append(flower)
             elif event.type == KEYDOWN:
                 if event.key == K_DOWN:
                     pass
                     #scrollAmount = scrollAmount - 10
                 elif event.key == K_UP:
                     pass
+                elif event.key == K_DELETE:
+                    for entity in selectedBeeArray:
+                        entity.timeToLive = 0
+                    selectedBeeArray = []
                     #scrollAmount = scrollAmount + 10
         if pygame.key.get_pressed()[K_UP]:
             scrollAmount = scrollAmount + 5
@@ -126,7 +133,7 @@ def main():
     ##                if selectionRect.collidepoint(bee.xPos,bee.yPos):
     ##                    bee.boolSelected = True
     ##                    selectedBeeArray.append(bee)
-        if random.random() > 0.99:
+        if random.random() > 0.9:
             if len(flowerArray) < 25:
             #create flowerpatch with same characteristics for each flower
                 flowerColour = (random.randint(128,255),random.randint(128,255),random.randint(128,255))
@@ -145,6 +152,10 @@ def main():
         for currentBee in beeArray:
             #trailArray.append(entities.Trail(currentBee))
             currentBee.updatePosition()
+            if betweenVertices((0,0),(windowWidth,windowHeight),currentBee) == False:
+                currentBee.xPos = currentBee.xPosLast
+                currentBee.yPos = currentBee.yPosLast
+                currentBee.direction = currentBee.direction + 180
             currentBee.turnTime = currentBee.turnTime - 1
             if currentBee.turnTime <= 0:
                 if currentBee.currentAction == "Moving randomly":
@@ -155,6 +166,12 @@ def main():
                     currentBee.randomDirection()
                     currentBee.vel = 2
                     currentBee.currentAction = "Moving randomly"
+                elif currentBee.currentAction == "Moving to memory":
+                    if currentBee.actionTime >= 0:
+                        currentBee.moveTowards((currentBee.memoryInQuestion.xPos,currentBee.memoryInQuestion.yPos),10)
+                    else:
+                        currentBee.currentAction = "Moving randomly"
+                        currentBee.randomDirection()
                 #currentBee.direction = currentBee.direction + 1
             if currentBee.timeToLive <= 0:
                 if beeExplosions == True:
@@ -164,7 +181,7 @@ def main():
         #UPDATES FLOWER STATES
         for flower in flowerArray:
             flower.makePollen()
-            if flower.timeToLive == 0:
+            if flower.timeToLive <= 0:
                 flowerArray.remove(flower)
 
         #COLLECTS POLLEN FROM NEARBY FLOWERS
@@ -206,7 +223,10 @@ def main():
         #DRAWS EACH BEE
         for i in range(0,len(selectedBeeArray)):
             if (30 * (i + 1) + scrollAmount) > 0:
-                debugFont.render_to(mainSurface,(windowWidth + 5,30 * (i + 1) + scrollAmount),"currentAction: " + selectedBeeArray[i].currentAction + ", dir: " + str(selectedBeeArray[i].direction) + ", xPos: " + str(selectedBeeArray[i].xPos) + ", yPos: " + str(selectedBeeArray[i].yPos),SOL_GREEN,None,0,0)
+                if isinstance(selectedBeeArray[i],entities.Bee):
+                    debugFont.render_to(mainSurface,(windowWidth + 5,30 * (i + 1) + scrollAmount),"currentAction: " + selectedBeeArray[i].currentAction + ", dir: " + str(selectedBeeArray[i].direction) + ", xPos: " + str(selectedBeeArray[i].xPos) + ", yPos: " + str(selectedBeeArray[i].yPos),SOL_GREEN,None,0,0)
+                elif isinstance(selectedBeeArray[i],entities.Flower):
+                    debugFont.render_to(mainSurface,(windowWidth + 5,30 * (i + 1) + scrollAmount), "pollenStored: " + str(selectedBeeArray[i].pollenStored) + ", pollenRate: " + str(selectedBeeArray[i].pollenRate) + ", pollenMax: " + str(selectedBeeArray[i].pollenMax),selectedBeeArray[i].colour,None,0,0)
         if selecting == True:
             selectionSize = (pygame.mouse.get_pos()[0] - selectionStart[0],pygame.mouse.get_pos()[1] - selectionStart[1])
             selectionRect = pygame.Rect(selectionStart,selectionSize)
