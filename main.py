@@ -44,12 +44,12 @@ def main():
 
     #GUI
     pygame.freetype.init()
-    debugFont = pygame.freetype.SysFont('Arial',24)
+    debugFont = pygame.freetype.SysFont('Arial',12)
 
     #MUSIC
-    pygame.mixer.init()
-    pygame.mixer.music.load('resources\Sunny Day Sky.ogg')
-    pygame.mixer.music.play(loops=-1)
+##    pygame.mixer.init()
+##    pygame.mixer.music.load('resources\Sunny Day Sky.ogg')
+##    pygame.mixer.music.play(loops=-1)
 
     #GAME OBJECTS
     beeArray = []
@@ -162,7 +162,11 @@ def main():
             currentBee.turnTime = currentBee.turnTime - 1
             if currentBee.turnTime <= 0:
                 if currentBee.currentAction == "Moving randomly":
-                    currentBee.randomDirection()
+                    currentBee.actionTime = currentBee.actionTime - 1
+                    if currentBee.actionTime <= 0:
+                        currentBee.currentAction = "Return to hive"
+                    else:
+                        currentBee.randomDirection()
                 elif currentBee.currentAction == "Return to hive":
                     currentBee.moveTowards((hive.xPos,hive.yPos),20)
                 elif currentBee.currentAction == "Idling":
@@ -170,18 +174,22 @@ def main():
                     currentBee.vel = 2
                     if currentBee.memoryArray == []:
                         currentBee.randomDirection()
-                        currentBee.currentAction = "Moving randomly"
+                        currentBee.movingRandomly()
                     else:
                         if random.random() < 0.8:
                             print("lucky")
                             currentBee.currentAction = "Moving to memory"
-                            currentBee.actionTime = 20
-                            currentBee.direction = currentBee.favouriteMemory.direction
-                            currentBee.memoryInQuestion = currentBee.favouriteMemory
+                            currentBee.actionTime = 10
+                            #currentBee.direction = currentBee.favouriteMemory.direction
+                            #currentBee.memoryInQuestion = currentBee.favouriteMemory #TESTING TO FIX CRASH
+                            currentBee.memoryInQuestion = entities.Memory(0,0,0,0)
+                            for memory in currentBee.memoryArray:
+                                if currentBee.memoryInQuestion.flowerViability < memory.flowerViability:
+                                    currentBee.memoryInQuestion = memory
                         else:
                             print("unlucky")
                             currentBee.randomDirection()
-                            currentBee.currentAction = "Moving randomly"
+                            currentBee.movingRandomly()
                     #currentBee.currentAction = "Moving randomly"
                 elif currentBee.currentAction == "Moving to memory":
                     if currentBee.actionTime >= 0:
@@ -219,7 +227,7 @@ def main():
                     if distanceBetween(bee,flower) < shortestDistance:
                         shortestDistance = distanceBetween(bee,flower)
                     if shortestDistance < 25:
-                        if bee.currentAction == "Moving randomly":
+                        if bee.currentAction == "Moving randomly" and flower.harvestTimeout <= 0:
                             bee.storeMemoryAboutFlower(flower)
                             bee.harvestPollen(flower)
                         shortestDistance = 99999
@@ -234,15 +242,16 @@ def main():
                                         bee.favouriteMemory = memory
                                 bee.harvestPollen(flower)
             elif bee.currentAction == "Idling": #chance to broadcast
-                if random.random() < 0.1:
+                if random.random() < 0.01:
                     for idlebee in idlingArray:
                         #print(bee.favouriteMemory in idlebee.memoryArray)
                         if idlebee != bee and ((bee.favouriteMemory in idlebee.memoryArray) == False):
-                            if idlebee.favouriteMemory.flowerViability < bee.favouriteMemory.flowerViability and random.random() < 0.25:
+                            if idlebee.favouriteMemory.flowerViability < bee.favouriteMemory.flowerViability and random.random() < 0.1:
                                 #print("tellinsomeone")
                                 idlebee.memoryArray.append(bee.favouriteMemory)
                                 idlebee.favouriteMemory = bee.favouriteMemory
                                 lineArray.append(ui.LineBetweenObjects(bee,idlebee,60))
+                    lineArray.append(ui.LineBetweenObjects(bee,bee.favouriteMemory,10,(GREEN)))
         for bee in beeArray:
             if hiveRect.collidepoint(bee.xPos,bee.yPos) and bee.currentAction == "Return to hive":
                 hive.collectPollenFromBee(bee)
@@ -271,16 +280,30 @@ def main():
 ##                pygame.draw.circle(screenSurface,trail.colour,(round(trail.xPos) + xOffset, round(trail.yPos) + yOffset),2,0)
         #DRAWS EACH BEE
         for line in lineArray:
-            pygame.draw.line(screenSurface,BLUE,(line.object1.xPos,line.object1.yPos),(line.object2.xPos,line.object2.yPos),2)
+            pygame.draw.line(screenSurface,line.colour,(line.object1.xPos,line.object1.yPos),(line.object2.xPos,line.object2.yPos),2)
             line.timeToLive = line.timeToLive - 1
             if line.timeToLive == 0:
                 lineArray.remove(line)
         for i in range(0,len(selectedBeeArray)):
-            if (30 * (i + 1) + scrollAmount) > 0:
+            if (30 * (i + 1) + scrollAmount) > 0: #This line stops things crashing, please don't ignore it
                 if isinstance(selectedBeeArray[i],entities.Bee):
-                    debugFont.render_to(mainSurface,(windowWidth + 5,30 * (i + 1) + scrollAmount),"currentAction: " + selectedBeeArray[i].currentAction + ", dir: " + str(selectedBeeArray[i].direction) + ", xPos: " + str(selectedBeeArray[i].xPos) + ", yPos: " + str(selectedBeeArray[i].yPos),SOL_GREEN,None,0,0)
+                    debugFont.render_to(mainSurface,
+                    (windowWidth + 5,30 * (i + 1) + scrollAmount),
+                    selectedBeeArray[i].name + ": "
+                     +"currentAction: " + selectedBeeArray[i].currentAction
+                     + ", favMem: " + str(selectedBeeArray[i].favouriteMemory)
+                     + ", memories: " + str(len(selectedBeeArray[i].memoryArray))
+                     + ", dir: " + str(selectedBeeArray[i].direction).zfill(3)
+                     + ", xPos: " + str(selectedBeeArray[i].xPos).zfill(6)
+                     + ", yPos: " + str(selectedBeeArray[i].yPos).zfill(6),
+                     SOL_GREEN,None,0,0)
                 elif isinstance(selectedBeeArray[i],entities.Flower):
-                    debugFont.render_to(mainSurface,(windowWidth + 5,30 * (i + 1) + scrollAmount), "pollenStored: " + str(selectedBeeArray[i].pollenStored) + ", pollenRate: " + str(selectedBeeArray[i].pollenRate) + ", pollenMax: " + str(selectedBeeArray[i].pollenMax),selectedBeeArray[i].colour,None,0,0)
+                    debugFont.render_to(mainSurface,
+                    (windowWidth + 5,30 * (i + 1) + scrollAmount),
+                     "pollenStored: " + str(selectedBeeArray[i].pollenStored)
+                     + ", pollenRate: " + str(selectedBeeArray[i].pollenRate)
+                     + ", pollenMax: " + str(selectedBeeArray[i].pollenMax),
+                     selectedBeeArray[i].colour,None,0,0)
         if selecting == True:
             selectionSize = (pygame.mouse.get_pos()[0] - selectionStart[0],pygame.mouse.get_pos()[1] - selectionStart[1])
             selectionRect = pygame.Rect(selectionStart,selectionSize)

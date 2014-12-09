@@ -10,6 +10,7 @@
 #-------------------------------------------------------------------------------
 from pygame.locals import *
 import random, math
+randomNameArray = ["Ba","Bo","Bee","Bob","Ben","Bat","Bri","Ben"]
 class Bee:
     xPos = 0.0
     yPos = 0.0
@@ -23,14 +24,16 @@ class Bee:
     direction = 0.0
     timeToLive = 0
     turnTime = 0
-    actionTime = 0
+    actionTime = 300
     colour = (0,0,0)
     favouriteMemory = None
     memoryInQuestion = None
     memoryArray = []
     distanceTravelled = 0.0
+    name = "undefined"
     currentAction = "Moving randomly"
     def __init__(self,xPos,yPos,vel):
+        self.name = randomNameArray[random.randint(0,7)] + randomNameArray[random.randint(0,7)]
         self.memoryArray = []
         self.xPos = xPos
         self.yPos = yPos
@@ -40,6 +43,9 @@ class Bee:
         self.timeToLive = 5000 + random.randint(0,300)
         self.colour = (random.randint(200,255),random.randint(200,255),0)
         self.favouriteMemory = Memory(0,0,0,0)
+    def movingRandomly(self):
+        self.currentAction = "Moving randomly"
+        self.actionTime = 300
     def randomDirection(self):
         self.direction = self.direction + random.randint(-20,20)
         self.turnTime = 3
