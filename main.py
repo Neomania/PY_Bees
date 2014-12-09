@@ -12,7 +12,7 @@
 def main():
     import pygame, sys, os, random
     import pygame.freetype
-    import entities
+    import entities, ui
     FPS = 60
     DEVPINK = (255,0,255)
     RED = (255,0,0)
@@ -49,7 +49,7 @@ def main():
     #MUSIC
     pygame.mixer.init()
     pygame.mixer.music.load('resources\Sunny Day Sky.ogg')
-    #pygame.mixer.music.play(loops=-1)
+    pygame.mixer.music.play(loops=-1)
 
     #GAME OBJECTS
     beeArray = []
@@ -58,6 +58,9 @@ def main():
     flowerArray = []
     explosionArray = []
     explosionSpriteArray = []
+    idlingArray = []
+    lineArray = []
+
     hive = entities.Beehive(windowWidth / 2, windowHeight / 2)
     hiveRect = pygame.Rect((windowWidth / 2) - 50, (windowHeight / 2) - 50,100,100)
     for i in range (0,25):
@@ -163,42 +166,88 @@ def main():
                 elif currentBee.currentAction == "Return to hive":
                     currentBee.moveTowards((hive.xPos,hive.yPos),20)
                 elif currentBee.currentAction == "Idling":
-                    currentBee.randomDirection()
+                    idlingArray.remove(currentBee)
                     currentBee.vel = 2
-                    currentBee.currentAction = "Moving randomly"
+                    if currentBee.memoryArray == []:
+                        currentBee.randomDirection()
+                        currentBee.currentAction = "Moving randomly"
+                    else:
+                        if random.random() < 0.8:
+                            print("lucky")
+                            currentBee.currentAction = "Moving to memory"
+                            currentBee.actionTime = 20
+                            currentBee.direction = currentBee.favouriteMemory.direction
+                            currentBee.memoryInQuestion = currentBee.favouriteMemory
+                        else:
+                            print("unlucky")
+                            currentBee.randomDirection()
+                            currentBee.currentAction = "Moving randomly"
+                    #currentBee.currentAction = "Moving randomly"
                 elif currentBee.currentAction == "Moving to memory":
                     if currentBee.actionTime >= 0:
                         currentBee.moveTowards((currentBee.memoryInQuestion.xPos,currentBee.memoryInQuestion.yPos),10)
+                        currentBee.actionTime = currentBee.actionTime - 1
                     else:
-                        currentBee.currentAction = "Moving randomly"
-                        currentBee.randomDirection()
+                        currentBee.currentAction = "Return to hive"
+                        if currentBee.heldPollen < 200:
+                            currentBee.memoryArray.remove(currentBee.memoryInQuestion)
+                        else:
+                            currentBee.memoryInQuestion.flowerViability = currentBee.memoryInQuestion.flowerViability * (0.8 + (0.2 * (currentBee.heldPollen / 1000)))
+##                        if currentBee.heldPollen < 200:
+##                            currentBee.memoryArray.remove(currentBee.memoryInQuestion) #CAUSING CRASHES
+                        for memory in currentBee.memoryArray:
+                            if memory.flowerViability > currentBee.favouriteMemory.flowerViability:
+                                currentBee.favouriteMemory = memory
                 #currentBee.direction = currentBee.direction + 1
             if currentBee.timeToLive <= 0:
                 if beeExplosions == True:
                     explosionArray.append(entities.Effect(currentBee))
                     soundArray[random.randint(0,2)].play()
-                beeArray.remove(currentBee) #RIP bee
+                #beeArray.remove(currentBee) #RIP bee
         #UPDATES FLOWER STATES
         for flower in flowerArray:
             flower.makePollen()
+            flower.harvestTimeout = flower.harvestTimeout - 1
             if flower.timeToLive <= 0:
                 flowerArray.remove(flower)
 
         #COLLECTS POLLEN FROM NEARBY FLOWERS
         for bee in beeArray:
-            if bee.currentAction != "Return to hive":
+            if bee.currentAction == "Moving randomly":
                 shortestDistance = 99999
                 for flower in flowerArray:
                     if distanceBetween(bee,flower) < shortestDistance:
                         shortestDistance = distanceBetween(bee,flower)
                     if shortestDistance < 25:
-                        bee.harvestPollen(flower)
+                        if bee.currentAction == "Moving randomly":
+                            bee.storeMemoryAboutFlower(flower)
+                            bee.harvestPollen(flower)
                         shortestDistance = 99999
-
+            elif bee.currentAction == "Moving to memory":
+                if distanceBetween(bee.memoryInQuestion,bee) < 250: #max distance to memory:
+                    for flower in flowerArray:
+                        if distanceBetween(bee,flower) < 25:
+                            if flower.harvestTimeout <= 0:
+                                bee.memoryInQuestion.updateViability(flower)
+                                for memory in bee.memoryArray:
+                                    if memory.flowerViability > bee.favouriteMemory.flowerViability:
+                                        bee.favouriteMemory = memory
+                                bee.harvestPollen(flower)
+            elif bee.currentAction == "Idling": #chance to broadcast
+                if random.random() < 0.1:
+                    for idlebee in idlingArray:
+                        #print(bee.favouriteMemory in idlebee.memoryArray)
+                        if idlebee != bee and ((bee.favouriteMemory in idlebee.memoryArray) == False):
+                            if idlebee.favouriteMemory.flowerViability < bee.favouriteMemory.flowerViability and random.random() < 0.25:
+                                #print("tellinsomeone")
+                                idlebee.memoryArray.append(bee.favouriteMemory)
+                                idlebee.favouriteMemory = bee.favouriteMemory
+                                lineArray.append(ui.LineBetweenObjects(bee,idlebee,60))
         for bee in beeArray:
             if hiveRect.collidepoint(bee.xPos,bee.yPos) and bee.currentAction == "Return to hive":
                 hive.collectPollenFromBee(bee)
                 bee.currentAction = "Idling"
+                idlingArray.append(bee)
                 bee.moveTowards((hive.xPos,hive.yPos),30)
                 bee.vel = 0.25
                 bee.turnTime = random.randint(60,600)
@@ -221,6 +270,11 @@ def main():
 ##            for trail in trailArray:
 ##                pygame.draw.circle(screenSurface,trail.colour,(round(trail.xPos) + xOffset, round(trail.yPos) + yOffset),2,0)
         #DRAWS EACH BEE
+        for line in lineArray:
+            pygame.draw.line(screenSurface,BLUE,(line.object1.xPos,line.object1.yPos),(line.object2.xPos,line.object2.yPos),2)
+            line.timeToLive = line.timeToLive - 1
+            if line.timeToLive == 0:
+                lineArray.remove(line)
         for i in range(0,len(selectedBeeArray)):
             if (30 * (i + 1) + scrollAmount) > 0:
                 if isinstance(selectedBeeArray[i],entities.Bee):
@@ -251,7 +305,7 @@ def main():
         #Final two lines, updates screen and ticks for frame (according to timescale)
         mainSurface.blit(screenSurface,(0,0))
         pygame.display.update()
-        print(len(beeArray))
+        #print(len(beeArray))
         fpsClock.tick(FPS * intTimeScale)
 def betweenVertices(selectionStart,selectionEnd,entity):
     inX = False
